@@ -104,7 +104,6 @@ variable "character_set_server" {
 variable "event_scheduler" {
     type        = string
     description = "Indicates the status of the Event Scheduler. It is always OFF for a replica server to keep the replication consistency."
-    default     = "OFF"
 }
 
 # need to restart server for this value to apply
@@ -222,10 +221,16 @@ variable "query_store_wait_sampling_frequency" {
     default     = "30"
 }
 
+variable "create_mode" {
+    type        = string
+    description = "Can be used to restore or replicate existing servers. Possible values are Default, Replica, GeoRestore, and PointInTimeRestore. Defaults to Default"
+}
+
+
 locals {
   mysql_config = merge({
     audit_log_enabled                       = var.audit_log_enabled
-    event_scheduler                         = var.event_scheduler
+    event_scheduler                         = var.create_mode != "Replica" ? var.event_scheduler : "ON"
     innodb_autoinc_lock_mode                = var.innodb_autoinc_lock_mode
     local_infile                            = var.local_infile
     max_allowed_packet                      = var.max_allowed_packet
