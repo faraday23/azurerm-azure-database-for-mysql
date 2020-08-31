@@ -90,7 +90,6 @@ resource "azurerm_mysql_server" "primary" {
   public_network_access_enabled     = false
   ssl_enforcement_enabled           = true
   ssl_minimal_tls_version_enforced  = "TLS1_2"
-  create_mode                       = "Default"
 
   threat_detection_policy {
     enabled                     = true                 
@@ -122,8 +121,9 @@ resource "azurerm_mysql_server" "replica" {
   public_network_access_enabled     = false
   ssl_enforcement_enabled           = true
   ssl_minimal_tls_version_enforced  = "TLS1_2"
-  create_mode                       = "Replica"
+  create_mode                       = var.create_mode
   creation_source_server_id         = azurerm_mysql_server.primary.id
+
 
   threat_detection_policy {
     enabled                     = true                 
