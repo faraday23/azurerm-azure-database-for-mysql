@@ -91,8 +91,8 @@ module "mysql_server" {
 # Login with the Azure CLI/bash terminal/powershell by running
 az login
 
-# Verify access by running
-az account show --output jsonc
+# Verify you are connected to correct subscription
+az account set --subscription 00000000-0000-0000-0000-000000000000
 
 # Confirm you are running required/pinned version of terraform
 terraform version
