@@ -27,7 +27,7 @@ module "rules" {
 }
 
 # For tags and info see https://github.com/Azure-Terraform/terraform-azurerm-metadata 
-# and for naming convention https://github.com/openrba/python-azure-naming 
+# For naming convention https://github.com/openrba/python-azure-naming 
 module "metadata"{
   source = "github.com/Azure-Terraform/terraform-azurerm-metadata.git?ref=v1.1.0"
 
