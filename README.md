@@ -77,7 +77,6 @@ module "mysql_server" {
 | sku_family | Azure database for MySQL sku family | `string` | `"Gen5"` | yes |
 | my_sql_version | MySQL version 5.7 or 8.0 | `string` | `"8.0"` | yes |
 | location | Location for all resources | `string` | n/a | yes |
-| ARM_TENANT_ID | Azure Tenant ID | `string` | `"00000000-0000-0000-0000-000000000000"` | yes |
 | ARM_SUBSCRIPTION_ID | Subscription ID where you would like to deploy the resources | `string` | `"00000000-0000-0000-0000-000000000000"` | yes |
   
 
