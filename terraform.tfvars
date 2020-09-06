@@ -2,16 +2,20 @@ tags={
     business_unit   = "iog"
     product_group   = "tfe"
     environment     = "sandbox"
-    provider        = "azurerm"
-    subscription_id = "0000000-0000-0000-0000-000000000000"   
+    provider        = "azurerm" 
 }
 names={
-    product_name    = "mysqlsrvr"
-    environment     = "sandbox"
+  market              = "us"
+  location            = "useast1"
+  sre_team            = "alpha"
+  environment         = "sandbox"
+  project             = "mysqlDB"
+  business_unit       = "iog"
+  product_group       = "tfe"
+  product_name        = "mysqlsrvr"
+  subscription_id     = "b0837458-adf3-41b0-a8fb-c16f9719627d"
+  subscription_type   = "nonprod"
+  resource_group_type = "app"
 }
-db_id="137"
-location="eastus"
-location_replica="westus"
-resource_group_name="rg-azure-demo-mysql-02"
-
+db_id="1337"
 

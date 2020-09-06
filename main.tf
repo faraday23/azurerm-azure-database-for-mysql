@@ -1,197 +1,180 @@
-# Configure azure provider
+variable "db_id" {
+  description = "identifier appended to db name (productname-environment-mysql<db_id>)"
+  type        = string
+}
+
+variable "names" {
+  description = "names to be applied to resources"
+  type        = map(string)
+}
+
+variable "tags" {
+  description = "tags to be applied to resources"
+  type        = map(string)
+}
+
+# Configure Providers
 provider "azurerm" {
-  version = ">= 2.24.0"
+  version = ">=2.0.0"
+  subscription_id = "b0837458-adf3-41b0-a8fb-c16f9719627d"
   features {}
 }
 
-# creates random password for mysql admin account
-resource "random_password" "login_password" {
-  length  = 24
-  special = true
+##
+# Pre-Build Modules 
+##
+
+module "subscription" {
+  source          = "github.com/Azure-Terraform/terraform-azurerm-subscription-data.git?ref=v1.0.0"
+  subscription_id = "b0837458-adf3-41b0-a8fb-c16f9719627d"
 }
 
-# Configure name of storage account
-resource "random_string" "storage_name" {
-    length  = 8
-    upper   = false
-    lower   = true
-    number  = true
-    special = false
+module "rules" {
+  source = "git@github.com:openrba/python-azure-naming.git?ref=tf"
 }
 
-# Meets security policy requirement by adding AzureNetwork DDoS Protection Plan.
-resource "azurerm_network_ddos_protection_plan" "ddos" {
-  name                = "ddos-${var.names.product_name}-${var.names.environment}-mysql${var.db_id}"
-  location            = var.location
-  resource_group_name = var.resource_group_name
+# For tags and info see https://github.com/Azure-Terraform/terraform-azurerm-metadata 
+# For naming convention see https://github.com/openrba/python-azure-naming 
+module "metadata" {
+  source = "github.com/Azure-Terraform/terraform-azurerm-metadata.git?ref=v1.0.0"
+
+  naming_rules = module.rules.yaml
+  
+  market              = "us"
+  location            = "useast1"
+  sre_team            = "alpha"
+  environment         = "sandbox"
+  project             = "mysqlDB"
+  business_unit       = "iog"
+  product_group       = "tfe"
+  product_name        = "mysqlsrvr"
+  subscription_id     = module.subscription.output.subscription_id
+  subscription_type   = "nonprod"
+  resource_group_type = "app"
 }
 
-# Manages a virtual network including any configured subnets. Each subnet can optionally be configured with a security group to be associated with the subnet.
-resource "azurerm_virtual_network" "vnet" {
-  name                = "vnet-${var.names.product_name}-${var.names.environment}-mysql${var.db_id}"
-  address_space       = ["10.0.0.0/16"]
-  location            = var.location
-  resource_group_name = var.resource_group_name
+module "resource_group" {
+  source = "github.com/Azure-Terraform/terraform-azurerm-resource-group.git?ref=v1.0.0"
+  
+  location = module.metadata.location
+  names    = module.metadata.names
+  tags     = module.metadata.tags
+}
 
-  ddos_protection_plan {
-    id     = azurerm_network_ddos_protection_plan.ddos.id
-    enable = true
+# mysql-server storage account
+module "storage_acct" {
+  source = "../mysql-module-test/storage_account"
+  # Required inputs 
+  db_id                 = var.db_id
+  
+  # Pre-Built Modules  
+  location              = module.metadata.location
+  names                 = module.metadata.names
+  tags                  = module.metadata.tags
+  resource_group_name   = module.resource_group.name
+}
+
+# deploy new vnet for private link endpoints
+module "virtual_network" {
+  source = "github.com/Azure-Terraform/terraform-azurerm-virtual-network.git?ref=v1.0.0"
+
+  naming_rules = module.rules.yaml
+
+  # Pre-Built Modules
+  resource_group_name = module.resource_group.name
+  location            = module.resource_group.location
+  names               = module.metadata.names
+  tags                = module.metadata.tags
+
+  address_space = ["192.168.123.0/24"]
+
+  subnets = {
+    "01-iaas-private"     = ["192.168.123.0/27"]
+    "02-iaas-public"      = ["192.168.123.32/27"]
+    "03-iaas-outbound"    = ["192.168.123.64/27"]
   }
 }
 
 # Manages a subnet. Subnets represent network segments within the IP space defined by the virtual network.
-resource "azurerm_subnet" "snet" {
-  name                 = "snet-${var.names.product_name}-${var.names.environment}-mysql${var.db_id}"
-  resource_group_name  = var.resource_group_name
-  virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes     = ["10.0.1.0/24"]
-
-  enforce_private_link_service_network_policies = true
-}
-
-# Manages a subnet. Subnets represent network segments within the IP space defined by the virtual network.
-resource "azurerm_subnet" "snet_endpoint" {
-  name                 = "snet-endpoint-${var.names.product_name}-${var.names.environment}-mysql${var.db_id}"
-  resource_group_name  = var.resource_group_name
-  virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes     = ["10.0.2.0/24"]
-
+module "snet_endpoint" {
+  source = "../mysql-module-test/snet_endpoint"
+  # Required inputs 
+  virtual_network_name = module.virtual_network.vnet.name
+  subnet_cidr          = module.virtual_network.subnet["iaas-private-subnet"].address_prefixes
   enforce_private_link_endpoint_network_policies = true
+  db_id                = var.db_id
+
+  # Pre-Built Modules  
+  names               = module.metadata.names
+  tags                = module.metadata.tags
+  resource_group_name = module.resource_group.name
 }
 
-# Manages an Azure Storage Account for Threat detection policy analytics.
-resource "azurerm_storage_account" "sql_storage" {
-  name                     = "stor${random_string.storage_name.result}${var.db_id}"
-  resource_group_name      = var.resource_group_name
-  location                 = var.location
-  account_tier             = "Standard"
-  account_replication_type = "GRS"
+# mysql-server module
+module "mysql_server" {
+  source = "../mysql-module-test/mysql_server"
+  # Required inputs 
+  db_id        = var.db_id
+  create_mode  = "Default"
 
-  tags = var.tags
-}
-
-# Primary MySQL Server.
-resource "azurerm_mysql_server" "primary" {
-  name                = "primary-${var.names.product_name}-${var.names.environment}-mysql${var.db_id}"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-
-  administrator_login          = var.administrator_login
-  administrator_login_password = random_password.login_password.result
-
-  sku_name   = var.sku_name
-  storage_mb = var.storage_mb
-  version    = var.mysql_version
-
-  auto_grow_enabled                 = false
-  backup_retention_days             = var.backup_retention_days
-  geo_redundant_backup_enabled      = var.geo_redundant_backup_enabled
-  infrastructure_encryption_enabled = var.infrastructure_encryption_enabled
-  public_network_access_enabled     = false
-  ssl_enforcement_enabled           = true
-  ssl_minimal_tls_version_enforced  = "TLS1_2"
-
-  threat_detection_policy {
-    enabled                     = true                 
-    storage_endpoint            = azurerm_storage_account.sql_storage.primary_blob_endpoint
-    storage_account_access_key  = azurerm_storage_account.sql_storage.primary_access_key
+  threat_detection_policy = [{
+    enabled                     = true   
+    storage_endpoint            = module.storage_acct.primary_blob_endpoint
+    storage_account_access_key  = module.storage_acct.primary_access_key         
     retention_days              = 7
+  }]
+
+  # Pre-Built Modules  
+  location            = module.metadata.location
+  names               = module.metadata.names
+  tags                = module.metadata.tags
+  resource_group_name = module.resource_group.name
+}
+
+module "private_dns_zone" {
+  source = "../mysql-module-test/private_dns_zone"
+  # Required inputs 
+  private_dns_zone_name = "privatelink.mysql.database.azure.com"
+
+  # Pre-Built Modules  
+  resource_group_name   = module.resource_group.name
+}
+
+module "private_dns_zone_virtual_network_link" {
+  source = "../mysql-module-test/private_dns_zone_virtual_network_link"
+  # Required inputs 
+  private_dns_zone_name = module.private_dns_zone.private_dns_zone_name
+  virtual_network_id    = module.virtual_network.vnet.id
+  db_id                 = var.db_id
+
+  # Pre-Built Modules  
+  resource_group_name   = module.resource_group.name
+  names                 = module.metadata.names
+  tags                  = module.metadata.tags
+}
+
+module "private_link_endpoint" {
+  source = "../mysql-module-test/private_link_endpoint"
+  # Required inputs 
+  subnet_id             = module.snet_endpoint.subnet_id
+  db_id                 = var.db_id
+   # Pre-Built Modules  
+  location              = module.metadata.location
+  names                 = module.metadata.names
+  tags                  = module.metadata.tags
+  resource_group_name   = module.resource_group.name
+
+    private_service_connection = {
+     name                           = "prv-serv-conn-${module.mysql_server.server_name}"
+     private_connection_resource_id = module.mysql_server.server_id
+     subresource_names              = ["mysqlServer"]
+     is_manual_connection           = "false"
+   }
+
+    private_dns_zone_group = {
+    name                 = module.private_dns_zone.private_dns_zone_name
+    private_dns_zone_ids = module.private_dns_zone.id
   }
-
-  tags = var.tags
-}
-
-# Replica MySQL Server. 
-resource "azurerm_mysql_server" "replica" {
-  name                = "replica-${var.names.product_name}-${var.names.environment}-mysql${var.db_id}"
-  location            = var.location_replica
-  resource_group_name = var.resource_group_name
-
-  administrator_login          = var.administrator_login
-  administrator_login_password = random_password.login_password.result
-
-  sku_name   = var.sku_name
-  storage_mb = var.storage_mb
-  version    = var.mysql_version
-
-  auto_grow_enabled                 = false
-  backup_retention_days             = var.backup_retention_days
-  geo_redundant_backup_enabled      = var.geo_redundant_backup_enabled
-  infrastructure_encryption_enabled = var.infrastructure_encryption_enabled
-  public_network_access_enabled     = false
-  ssl_enforcement_enabled           = true
-  ssl_minimal_tls_version_enforced  = "TLS1_2"
-  create_mode                       = var.create_mode
-  creation_source_server_id         = azurerm_mysql_server.primary.id
-
-
-  threat_detection_policy {
-    enabled                     = true                 
-    storage_endpoint            = azurerm_storage_account.sql_storage.primary_blob_endpoint
-    storage_account_access_key  = azurerm_storage_account.sql_storage.primary_access_key
-    retention_days              = 7
-  }
-
-  tags = var.tags
-}
-
-# Sets MySQL Configuration values on a MySQL Server.
-resource "azurerm_mysql_configuration" "config" {
-  for_each            = local.mysql_config
-
-  name                = each.key
-  resource_group_name = var.resource_group_name
-  server_name         = azurerm_mysql_server.primary.name
-  value               = each.value
-}
-
-# Sets MySQL Configuration values on a MySQL Server.
-resource "azurerm_mysql_configuration" "config_replica" {
-  for_each            = local.mysql_config
-
-  name                = each.key
-  resource_group_name = var.resource_group_name
-  server_name         = azurerm_mysql_server.replica.name
-  value               = each.value
-}
-
-# Enables you to manage Private DNS zone Virtual Network Links. 
-# These Links enable DNS resolution and registration inside Azure Virtual Networks using Azure Private DNS.
-resource "azurerm_private_dns_zone" "dns_zone" {
-  name                = "privatelink.mysql.database.azure.com"
-  resource_group_name = var.resource_group_name
-}
-
-# Enables you to manage Private DNS zone Virtual Network Links. 
-# These Links enable DNS resolution and registration inside Azure Virtual Networks using Azure Private DNS.
-resource "azurerm_private_dns_zone_virtual_network_link" "dns_zone_vnet" {
-  name                  = "dns-${var.names.product_name}-${var.names.environment}-mysql${var.db_id}"
-  resource_group_name   = var.resource_group_name
-  private_dns_zone_name = azurerm_private_dns_zone.dns_zone.name
-  virtual_network_id    = azurerm_virtual_network.vnet.id
-}
-
-# Azure Private Endpoint is a network interface that connects you privately and securely to a service powered by Azure Private Link. 
-# Private Endpoint uses a private IP address from your VNet, effectively bringing the service into your VNet. The service could be an Azure service such as Azure Storage, SQL, etc. or your own Private Link Service.
-resource "azurerm_private_endpoint" "mysql_endpoint" {
-  name                = "mysql-endpoint-${var.names.product_name}-${var.names.environment}-mysql${var.db_id}"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  subnet_id           = azurerm_subnet.snet_endpoint.id
-
-  private_service_connection {
-    name                           = "prv-serv-conn-${var.names.product_name}-${var.names.environment}-mysql${var.db_id}"
-    private_connection_resource_id = azurerm_mysql_server.primary.id
-    subresource_names              = ["mysqlServer"]
-    is_manual_connection           = false
-  }
-
-  private_dns_zone_group {
-    name                 = azurerm_mysql_server.primary.name
-    private_dns_zone_ids = [azurerm_private_dns_zone.dns_zone.id]
-  }
-
-   tags = var.tags
 }
 
 
