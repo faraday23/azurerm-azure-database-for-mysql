@@ -1,3 +1,12 @@
+# Configures MySQL server
+provider "mysql" {
+  alias = "create_users"
+
+  endpoint = format("%s:3306", module.mysql_server.primary_fqdn)
+  username = var.administrator_login
+  password = var.administrator_password
+}
+
 # toggles on/off auditing and advanced threat protection policy for sql server
 locals {
     if_threat_detection_policy_enabled  = var.enable_threat_detection_policy ? [{}] : []                
