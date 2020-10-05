@@ -85,19 +85,15 @@ module "storage_acct" {
 
 # mysql-server module
 module "mysql_server" {
-  source = "../mysql-module-test/mysql_server_vnet_rule"
+  source = "../mysql-module-test/mysql_replica"
   # Pre-Built Modules  
   location                  = module.metadata.location
   names                     = module.metadata.names
   tags                      = module.metadata.tags
   # Required inputs 
-  srvr_id                   = "01"
-  srvr_id_replica           = "03"
+  srvr_id_replica           = "03" # must be unique value
   resource_group_name       = "rg-azure-demo-mysql"
   event_scheduler           = "ON"
-  # Enable creation of Database 
-  enable_primary            = false
-  enable_db                 = false
   # Replica server required inputs
   enable_replica            = true
   create_mode               = "Replica"
@@ -113,8 +109,8 @@ module "mysql_server" {
   storage_account   = "sqlvalhqvn4pesccwq"
   # Enable azure ad admin
   enable_mysql_ad_admin          = false
-  ad_admin_login_name            = "bagbru01@risk.regn.net"
-  ad_admin_login_name_replica    = "emerwe01@risk.regn.net"
+  ad_admin_login_name            = "first.last@risk.regn.net"
+  ad_admin_login_name_replica    = "first.last@risk.regn.net"
   # private link endpoint
   enable_private_endpoint        = false 
   public_network_access_enabled  = true      # public access will need to be enabled to use vnet rules
@@ -134,3 +130,5 @@ module "mysql_server" {
                 start_ip_address  = "209.243.55.98"
                 end_ip_address    = "209.243.55.98"}]
 }
+
+
