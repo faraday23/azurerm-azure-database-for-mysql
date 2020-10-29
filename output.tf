@@ -1,42 +1,31 @@
 output "resource_group_name" {
-  value = module.resource_group.name
+  description = "The name of the resource group in which resources are created"  
+  value       = var.resource_group_name
 }
 
-output "private_dns_zone_name" {
-  value = module.private_dns_zone.private_dns_zone_name
+output "administrator_login" {
+  description = "The mysql instance login for the admin."
+  sensitive   = true
+  value       = var.administrator_login
 }
 
-output "private_dns_zone_ids" {
-  description = "dns zone id"
-  value       = module.snet_endpoint.subnet_id
+output "administrator_password" {
+  description = "The password for the admin account of the MySQL instance."
+  sensitive   = true
+  value       = (var.create_mode == "Default" ? random_password.admin[0].result : null)
 }
 
-output "subnet_id" {
-  description = "the name of the endpoint id."
-  value       = module.snet_endpoint.subnet_id
-}
-
-output "virtual_network_name" {
-  description = "the name of the endpoint id."
-  value       = module.snet_endpoint.subnet_id
-}
-
-output "primary_blob_endpoint" {
-  value = module.storage_acct.primary_blob_endpoint
-}
-
-output "primary_access_key" {
-  value = module.storage_acct.primary_access_key
-}
-
-output "server_id" {
-  value       = module.mysql_server.server_id
-  description = "The ID of the mysql instance."
-}
-
-output "server_name" {
-  value       = module.mysql_server.server_name
+output "name" {
   description = "The Name of the mysql instance."
+  value       = azurerm_mysql_server.instance.name
 }
 
+output "id" {
+  description = "The ID of the MySQL instance."
+  value       = azurerm_mysql_server.instance.id
+}
 
+output "fqdn" {
+  description = "The fully qualified domain name of the Azure MySQL Server" 
+  value       = azurerm_mysql_server.instance.fqdn
+}
