@@ -48,7 +48,6 @@ resource "azurerm_mysql_server" "instance" {
           retention_days             = var.log_retention_days
       }
   }
-
 }
 
 # MySQL Database within a MySQL Server
@@ -82,7 +81,7 @@ resource "azurerm_mysql_active_directory_administrator" "ad_admin" {
   object_id           = data.azurerm_client_config.current.object_id
 }
 
-#MySQL Service Endpoints 
+# MySQL Service Endpoints 
 resource "azurerm_mysql_virtual_network_rule" "service_endpoint" {
   for_each            = var.service_endpoints
   name                = each.key
@@ -91,7 +90,7 @@ resource "azurerm_mysql_virtual_network_rule" "service_endpoint" {
   subnet_id           = each.value
 }
 
-#MySQL Access List
+# MySQL Access List
 resource "azurerm_mysql_firewall_rule" "access_list" {
   for_each            = var.access_list
   name                = each.key

@@ -60,7 +60,6 @@ variable "administrator_password" {
 variable "create_mode" {
     description = "Can be used to restore or replicate existing servers. Possible values are Default, Replica, GeoRestore, and PointInTimeRestore. Defaults to Default"
     type        = string
-    default     = "Default"
 }
 
 variable "creation_source_server_id" {
