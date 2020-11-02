@@ -6,13 +6,13 @@ output "resource_group_name" {
 output "administrator_login" {
   description = "The mysql instance login for the admin."
   sensitive   = true
-  value       = var.administrator_login
+  value       = local.administrator_login
 }
 
 output "administrator_password" {
   description = "The password for the admin account of the MySQL instance."
   sensitive   = true
-  value       = (var.create_mode == "Default" ? random_password.admin[0].result : null)
+  value       = local.administrator_password
 }
 
 output "name" {

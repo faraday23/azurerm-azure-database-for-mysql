@@ -1,23 +1,29 @@
 # toggles on/off auditing and advanced threat protection policy for sql server
 locals {
-    if_threat_detection_policy_enabled = var.enable_threat_detection_policy ? [{}] : []                
+  if_threat_detection_policy_enabled = var.enable_threat_detection_policy ? [{}] : []
+
+  create_password = (var.create_mode == "Default" ? (var.administrator_password == "" ? 1 : 0) : 0)
+
+  administrator_login = (var.create_mode == "Default" ? var.administrator_login : null)
+
+  administrator_password = (var.create_mode == "Default" ? (var.administrator_password == "" ? random_password.admin[0].result : var.administrator_password) : null)
 }
 
-# creates random password for admin account
+# creates random password for admin account if not specified
 resource "random_password" "admin" {
-  count       = (var.create_mode == "Default" ? 1 : 0)
+  count       = local.create_password
   length      = 24
   special     = true
 }
 
 resource "azurerm_mysql_server" "instance" {
-  name                = "${var.names.product_name}-${var.names.environment}-${var.server_id}"
+  name                = "${var.names.product_name}-${var.names.environment}-mysql${var.server_id}"
   location            = var.location
   resource_group_name = var.resource_group_name
   tags = var.tags
 
-  administrator_login          = (var.create_mode == "Default" ? var.administrator_login : null)
-  administrator_login_password = (var.create_mode == "Default" ? random_password.admin[0].result : null)
+  administrator_login          = local.administrator_login
+  administrator_login_password = local.administrator_password
 
   sku_name   = var.sku_name
   storage_mb = var.storage_mb

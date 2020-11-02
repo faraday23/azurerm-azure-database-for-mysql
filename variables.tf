@@ -51,6 +51,12 @@ variable "administrator_login" {
   default     = "az_dbadmin"
 }
 
+variable "administrator_password" {
+  type        = string
+  description = "Database administrator login name (leave blank to generate random string)"
+  default     = ""
+}
+
 variable "create_mode" {
     description = "Can be used to restore or replicate existing servers. Possible values are Default, Replica, GeoRestore, and PointInTimeRestore. Defaults to Default"
     type        = string
