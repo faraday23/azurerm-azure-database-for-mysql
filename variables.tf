@@ -58,20 +58,21 @@ variable "administrator_password" {
 }
 
 variable "create_mode" {
-    description = "Can be used to restore or replicate existing servers. Possible values are Default, Replica, GeoRestore, and PointInTimeRestore. Defaults to Default"
-    type        = string
+  description = "Can be used to restore or replicate existing servers. Possible values are Default, Replica, GeoRestore, and PointInTimeRestore. Defaults to Default"
+  type        = string
+  default = "Default"
 }
 
 variable "creation_source_server_id" {
-    description = "the source server ID to use. use this only when creating a read replica server"
-    type        = string
-    default     = ""
+  description = "the source server ID to use. use this only when creating a read replica server"
+  type        = string
+  default     = ""
 }
 
 variable "log_retention_days" {
-    description = "Specifies the number of days to keep in the Threat Detection audit logs"
-    type        = number
-    default     = 7
+  description = "Specifies the number of days to keep in the Threat Detection audit logs"
+  type        = number
+  default     = 7
 }
 
 variable "ssl_enforcement_enabled" {
