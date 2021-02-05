@@ -95,7 +95,7 @@ module "virtual_network" {
 }
 
 module "storage_account" {
-  source = "github.com/openrba/terraform-azurerm-storage-account.git"
+  source = "github.com/openrba/terraform-azurerm-storage-account.git?ref=v0.3.0"
 
   resource_group_name = module.resource_group.name
   location            = module.resource_group.location
